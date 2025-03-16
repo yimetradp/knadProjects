@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 
-st.title("Анализ температурных данных")
+st.title("Анализ температурных данных и мониторинг текущей температуры через OpenWeatherMap API")
 
 uploaded_file = st.file_uploader("Загрузите CSV-файл с историческими данными", type="csv")
 if uploaded_file is not None:
