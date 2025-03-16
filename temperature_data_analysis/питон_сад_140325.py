@@ -1,11 +1,7 @@
-import aiohttp
-import asyncio
 import numpy as np
 import pandas as pd
 import requests
-import time
 from datetime import datetime
-from joblib import Parallel, delayed
 
 API_KEY = '5189fb2f58df9b07a9c3baae5ba4950f'
 BASE_URL = 'http://api.openweathermap.org/data/2.5/weather'
