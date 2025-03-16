@@ -1,105 +1,38 @@
-import numpy as np
+import streamlit as st
 import pandas as pd
 import requests
-from datetime import datetime
 
-API_KEY = '5189fb2f58df9b07a9c3baae5ba4950f'
-BASE_URL = 'http://api.openweathermap.org/data/2.5/weather'
+st.title("Анализ температурных данных")
 
-def get_current_season():
-    month = datetime.now().month
-    if month in [12, 1, 2]:
-        return 'winter'
-    elif month in [3, 4, 5]:
-        return 'spring'
-    elif month in [6, 7, 8]:
-        return 'summer'
-    else:
-        return 'autumn'
+uploaded_file = st.file_uploader("Загрузите CSV-файл с историческими данными", type="csv")
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file, parse_dates=["timestamp"])
+    st.success("Данные успешно загружены!")
+    st.dataframe(df.head())
+else:
+    st.warning("Пожалуйста, загрузите файл с историческими данными.")
 
-def is_temperature_normal(city, current_temp, historical_stats, current_season):
-    stats = historical_stats[(historical_stats['city'] == city) & (historical_stats['season'] == current_season)]
-    if stats.empty:
-        raise Exception(f'Нет исторических данных для города {city} и сезона {current_season}')
-    mean_temp = stats['mean'].iloc[0]
-    std_temp = stats['std'].iloc[0]
-    lower_bound = mean_temp - 2 * std_temp
-    upper_bound = mean_temp + 2 * std_temp
-    return lower_bound <= current_temp <= upper_bound, mean_temp, std_temp
+cities = ["Berlin", "Cairo", "Dubai", "Beijing", "Moscow"]
+selected_city = st.selectbox("Выберите город", cities)
 
-def get_current_temperature_sync(city):
-    params = {
-        'q': city,
-        'appid': API_KEY,
-        'units': 'metric'
-    }
-    response = requests.get(BASE_URL, params=params)
+api_key = st.text_input("Введите API-ключ OpenWeatherMap", type="password")
+if not api_key:
+    st.info("API-ключ не введён. Данные о текущей погоде не будут отображаться.")
+else:
+    st.success("API-ключ введён!")
+
+def get_current_temperature(city, key):
+    base_url = "http://api.openweathermap.org/data/2.5/weather"
+    params = {"q": city, "appid": key, "units": "metric"}
+    response = requests.get(base_url, params=params)
     data = response.json()
     if response.status_code == 200:
-        return data['main']['temp']
+        return data["main"]["temp"]
     else:
-        raise Exception(f'Ошибка API для города {city}: {data.get('message', 'Неизвестная ошибка')}')
+        st.error(f"Ошибка получения данных для {city}: {data.get('message', 'Неизвестная ошибка')}")
+        return None
 
-# Реальные средние температуры (примерные данные) для городов по сезонам
-seasonal_temperatures = {
-    "New York": {"winter": 0, "spring": 10, "summer": 25, "autumn": 15},
-    "London": {"winter": 5, "spring": 11, "summer": 18, "autumn": 12},
-    "Paris": {"winter": 4, "spring": 12, "summer": 20, "autumn": 13},
-    "Tokyo": {"winter": 6, "spring": 15, "summer": 27, "autumn": 18},
-    "Moscow": {"winter": -10, "spring": 5, "summer": 18, "autumn": 8},
-    "Sydney": {"winter": 12, "spring": 18, "summer": 25, "autumn": 20},
-    "Berlin": {"winter": 0, "spring": 10, "summer": 20, "autumn": 11},
-    "Beijing": {"winter": -2, "spring": 13, "summer": 27, "autumn": 16},
-    "Rio de Janeiro": {"winter": 20, "spring": 25, "summer": 30, "autumn": 25},
-    "Dubai": {"winter": 20, "spring": 30, "summer": 40, "autumn": 30},
-    "Los Angeles": {"winter": 15, "spring": 18, "summer": 25, "autumn": 20},
-    "Singapore": {"winter": 27, "spring": 28, "summer": 28, "autumn": 27},
-    "Mumbai": {"winter": 25, "spring": 30, "summer": 35, "autumn": 30},
-    "Cairo": {"winter": 15, "spring": 25, "summer": 35, "autumn": 25},
-    "Mexico City": {"winter": 12, "spring": 18, "summer": 20, "autumn": 15},
-}
-
-# Сопоставление месяцев с сезонами
-month_to_season = {12: "winter", 1: "winter", 2: "winter",
-                   3: "spring", 4: "spring", 5: "spring",
-                   6: "summer", 7: "summer", 8: "summer",
-                   9: "autumn", 10: "autumn", 11: "autumn"}
-
-# Генерация данных о температуре
-def generate_realistic_temperature_data(cities, num_years=10):
-    dates = pd.date_range(start="2010-01-01", periods=365 * num_years, freq="D")
-    data = []
-
-    for city in cities:
-        for date in dates:
-            season = month_to_season[date.month]
-            mean_temp = seasonal_temperatures[city][season]
-            # Добавляем случайное отклонение
-            temperature = np.random.normal(loc=mean_temp, scale=5)
-            data.append({"city": city, "timestamp": date, "temperature": temperature})
-
-    df = pd.DataFrame(data)
-    df['season'] = df['timestamp'].dt.month.map(lambda x: month_to_season[x])
-    return df
-
-# Генерация данных
-data = generate_realistic_temperature_data(list(seasonal_temperatures.keys()))
-data['rolling_30d'] = data.groupby('city')['temperature'].transform(lambda x: x.rolling(window=30, min_periods=1).mean())
-stats = data.groupby(['city', 'season'])['temperature'].agg(['mean', 'std']).reset_index()
-df = pd.merge(data, stats, on=['city', 'season'], how='left')
-
-historical_stats = (
-    data.groupby(['city', 'season'])['temperature']
-      .agg(mean='mean', std='std')
-      .reset_index()
-)
-
-current_season = get_current_season()
-
-try:
-    current_temp = get_current_temperature_sync(city)
-    normal, mean_temp, std_temp = is_temperature_normal(city, current_temp, historical_stats, current_season)
-    status = 'Норма' if normal else 'Аномалия'
-    print(f'{city}: текущая температура = {current_temp:.1f}°C, историческое среднее = {mean_temp:.1f}°C, std = {std_temp:.1f}°C => {status}')
-except Exception as e:
-    print(f'{city}: {e}')
+if api_key and uploaded_file is not None:
+    current_temp = get_current_temperature(selected_city, api_key)
+    if current_temp is not None:
+        st.write(f"Текущая температура в {selected_city}: {current_temp:.1f}°C")
