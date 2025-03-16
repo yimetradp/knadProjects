@@ -21,16 +21,21 @@ if not api_key:
 else:
     st.success("API-ключ введён!")
 
+
 def get_current_temperature(city, key):
     base_url = "http://api.openweathermap.org/data/2.5/weather"
     params = {"q": city, "appid": key, "units": "metric"}
     response = requests.get(base_url, params=params)
     data = response.json()
-    if response.status_code == 200:
-        return data["main"]["temp"]
-    else:
+    if response.status_code == 401:
+        st.error(f"Ошибка: {data.get('message', 'Неверный API-ключ')}")
+        return None
+    elif response.status_code != 200:
         st.error(f"Ошибка получения данных для {city}: {data.get('message', 'Неизвестная ошибка')}")
         return None
+    else:
+        return data["main"]["temp"]
+
 
 if api_key and uploaded_file is not None:
     current_temp = get_current_temperature(selected_city, api_key)
