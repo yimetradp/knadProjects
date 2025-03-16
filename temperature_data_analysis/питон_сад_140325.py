@@ -84,10 +84,12 @@ def generate_realistic_temperature_data(cities, num_years=10):
 
 # Генерация данных
 data = generate_realistic_temperature_data(list(seasonal_temperatures.keys()))
-data.to_csv('temperature_data.csv', index=False)
+data['rolling_30d'] = data.groupby('city')['temperature'].transform(lambda x: x.rolling(window=30, min_periods=1).mean())
+stats = data.groupby(['city', 'season'])['temperature'].agg(['mean', 'std']).reset_index()
+df = pd.merge(data, stats, on=['city', 'season'], how='left')
 
 historical_stats = (
-    df.groupby(['city', 'season'])['temperature']
+    data.groupby(['city', 'season'])['temperature']
       .agg(mean='mean', std='std')
       .reset_index()
 )
