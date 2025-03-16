@@ -14,7 +14,7 @@ if uploaded_file is not None:
         st.error("В файле отсутствует столбец 'city'. Проверьте формат данных.")
     else:
         st.success("Данные успешно загружены!")
-        st.dataframe(df.head())
+        st.dataframe(df.sample(5))
 else:
     st.warning("Пожалуйста, загрузите файл с историческими данными.")
 
