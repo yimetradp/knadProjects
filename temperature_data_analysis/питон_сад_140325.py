@@ -20,7 +20,7 @@ if uploaded_file is not None:
     cities = df["city"].unique().tolist()
     selected_city = st.selectbox("Выберите город", sorted(cities))
 
-    api_key = st.text_input("Введите API-ключ OpenWeatherMap", type="password")
+    api_key = st.text_input("Введите API-ключ OpenWeatherMap")
     if not api_key:
         st.info("API-ключ не введён. Данные о текущей погоде не будут отображаться.")
     else:
