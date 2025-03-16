@@ -10,8 +10,11 @@ st.title("Анализ температурных данных и монитор
 uploaded_file = st.file_uploader("Загрузите CSV-файл с историческими данными", type="csv")
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file, parse_dates=["timestamp"])
-    st.success("Данные успешно загружены!")
-    st.dataframe(df.head())
+    if "city" not in df.columns:
+        st.error("В файле отсутствует столбец 'city'. Проверьте формат данных.")
+    else:
+        st.success("Данные успешно загружены!")
+        st.dataframe(df.head())
 else:
     st.warning("Пожалуйста, загрузите файл с историческими данными.")
 
